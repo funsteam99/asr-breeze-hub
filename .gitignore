@@ -1,0 +1,28 @@
+# Local configuration and probe output -- machine specific by definition.
+.env
+hardware.json
+
+# Compiled inference engine (cloned and built by scripts/setup_engine.sh)
+engine/
+
+# Models are gigabytes; fetched by scripts/fetch_model.sh
+models/
+*.bin
+*.gguf
+
+# Runtime state
+var/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.bak
+*.swp

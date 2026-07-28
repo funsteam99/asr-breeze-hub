@@ -1,0 +1,17 @@
+# Runtime dependencies. Deliberately small: the heavy lifting is done by
+# whisper.cpp, which is compiled rather than pip-installed.
+#
+# Lower bounds match what ships on Ubuntu 20.04 / JetPack 5 (Python 3.8) so a
+# Jetson does not have to upgrade anything; upper bounds guard against known
+# breaking changes.
+
+flask>=2.0,<4.0
+waitress>=2.0
+requests>=2.22
+websockets>=10.0,<16.0
+
+# Optional -- the realtime console hides its webcam panel when OpenCV is absent.
+# On Jetson prefer the system build (`sudo apt install python3-opencv`) over pip,
+# which has no aarch64 wheels for JetPack's Python.
+#
+#   opencv-python-headless>=4.5

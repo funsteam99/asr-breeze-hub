@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Breeze ASR AI 智慧會議秘書</title>
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --panel: rgba(23, 26, 33, 0.85);
+      --border: rgba(44, 49, 60, 0.6);
+      --text: #f3f5f8;
+      --muted: #a4adbb;
+      --accent-green: #19c37d;
+      --accent-blue: #0070f3;
+      --accent-gradient: linear-gradient(135deg, #19c37d, #0070f3);
+      --glass-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    }
+    
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Noto Sans TC", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    header {
+      background: rgba(11, 12, 16, 0.8);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-badge {
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .badge {
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #19c37d;
+      box-shadow: 0 0 8px #19c37d;
+    }
+    .dot.yellow {
+      background: #ffb703;
+      box-shadow: 0 0 8px #ffb703;
+    }
+
+    .container {
+      max-width: 1400px;
+      width: 100%;
+      margin: 24px auto;
+      padding: 0 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      flex: 1;
+    }
+
+    @media (max-width: 1024px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--panel);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--glass-glow);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: var(--accent-gradient);
+    }
+
+    .card h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .input-group label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+    
+    .file-upload-btn {
+      flex: 1;
+      min-width: 200px;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    
+    .file-upload-btn:hover {
+      border-color: var(--accent-green);
+      background: rgba(25, 195, 125, 0.04);
+    }
+    
+    .file-upload-btn p {
+      margin: 0;
+      font-size: 14px;
+    }
+    
+    .file-upload-btn small {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    select, input[type="number"], textarea, input[type="text"] {
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    
+    select:focus, input[type="number"]:focus, textarea:focus, input[type="text"]:focus {
+      border-color: var(--accent-green);
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      border: 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    
+    button.primary {
+      background: var(--accent-gradient);
+      color: #062015;
+    }
+    
+    button.primary:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+    
+    button.secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    
+    button.secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .results-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .dl-links {
+      display: flex;
+      gap: 12px;
+    }
+    .dl-links a {
+      color: var(--accent-green);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      transition: opacity 0.2s;
+    }
+    .dl-links a:hover {
+      text-decoration: underline;
+    }
+
+    textarea {
+      width: 100%;
+      resize: vertical;
+      min-height: 280px;
+      line-height: 1.6;
+    }
+
+    .output-rich {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      min-height: 280px;
+      max-height: 500px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    .output-rich h1, .output-rich h2, .output-rich h3 {
+      margin-top: 16px;
+      margin-bottom: 8px;
+      color: var(--accent-green);
+    }
+    .output-rich ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+    .output-rich li {
+      margin: 4px 0;
+    }
+    .output-rich strong {
+      color: #38bdf8;
+    }
+
+    pre.log-box {
+      white-space: pre-wrap;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 12px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #cbd5e1;
+      max-height: 120px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      margin: 0;
+    }
+
+    /* LLM Secretary panel tools */
+    .llm-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 480px) {
+      .llm-grid { grid-template-columns: 1fr; }
+    }
+    
+    .llm-btn {
+      padding: 12px;
+      font-size: 13px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: flex-start;
+    }
+    .llm-btn:hover {
+      background: rgba(0, 112, 243, 0.1);
+      border-color: var(--accent-blue);
+    }
+    .llm-btn:active {
+      transform: scale(0.98);
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      font-size: 12px;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Breeze ASR AI 智慧會議秘書</h1>
+    <div class="status-badge">
+      <div class="badge">
+        <div class="dot"></div>
+        <span>Breeze ASR: 8013 (Online)</span>
+      </div>
+      <div class="badge">
+        <div class="dot" id="llm-dot"></div>
+        <span id="llm-status">Gemma-4: 18082 (Online)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+  
+    <!-- Left Column: ASR Panel -->
+    <div class="card">
+      <h2>🎙️ ASR 語音轉錄 (Breeze ASR 26)</h2>
+      
+      <div class="input-group">
+        <label>選擇音檔 / 影片檔</label>
+        <label class="file-upload-btn" for="file">
+          <p id="fname">📁 點擊此處或拖曳檔案進行上傳</p>
+          <small>支援格式: .mp3, .wav, .m4a, .flac, .ogg (自動轉檔)</small>
+        </label>
+        <input id="file" type="file" accept=".wav,.mp3,.m4a,.flac,.ogg" />
+      </div>
+
+      <!-- 離線聲紋發言人標記 (WhisperX) 設定區 -->
+      <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="use-whisperx" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-green);" />
+            <label for="use-whisperx" style="font-size: 14px; font-weight: 600; cursor: pointer; user-select: none;">👥 啟用離線聲紋發言人標記 (WhisperX)</label>
+          </div>
+          <span style="font-size: 11px; background: rgba(25, 195, 125, 0.1); color: var(--accent-green); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(25, 195, 125, 0.2);">GPU 加速</span>
+        </div>
+        
+        <!-- 模式建議提示 -->
+        <div style="font-size: 12px; color: var(--muted); line-height: 1.5; background: rgba(0, 112, 243, 0.05); padding: 10px 12px; border-radius: 8px; border-left: 3px solid var(--accent-blue);">
+          💡 <strong>如何選擇轉錄模式？</strong><br>
+          • <strong>未勾選 (單人筆記/演講)</strong>：使用台灣優化的 <strong>Breeze ASR</strong>，辨識速度飛快、在地詞彙精準度極高。<br>
+          • <strong>已勾選 (多人會議)</strong>：使用 <strong>WhisperX (Large-v3)</strong> 做聲紋分析，可精準切分不同發言人並整合時間軸。
+        </div>
+        
+        <!-- 當開啟 WhisperX 時展開的詳細設定 -->
+        <div id="whisperx-settings" style="display: none; flex-direction: column; gap: 12px; border-top: 1px dashed var(--border); padding-top: 12px;">
+          <div class="input-group">
+            <label for="hf-token">Hugging Face Access Token (用於下載 pyannote 聲紋切割模型)</label>
+            <input type="password" id="hf-token" placeholder="輸入 hf_... token，會自動加密儲存於瀏覽器" style="width: 100%;" />
+          </div>
+          <div class="row">
+            <div class="input-group" style="flex: 1; min-width: 120px;">
+              <label for="min-speakers">最少發言人數 (選填)</label>
+              <input type="number" id="min-speakers" placeholder="例如：2" min="1" max="20" style="width: 100%;" />
+            </div>
+            <div class="input-group" style="flex: 1; min-width: 120px;">
+              <label for="max-speakers">最多發言人數 (選填)</label>
+              <input type="number" id="max-speakers" placeholder="例如：4" min="1" max="20" style="width: 100%;" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="input-group" style="flex: 1; min-width: 140px;">
+          <label for="format">儲存格式</label>
+          <select id="format">
+            <option value="txt">純文字 (TXT)</option>
+            <option value="srt">字幕檔 (SRT)</option>
+            <option value="vtt">字幕檔 (VTT)</option>
+          </select>
+        </div>
+        <div class="input-group" style="width: 100px;">
+          <label for="max_len">段落限長 (字)</label>
+          <input id="max_len" type="number" value="20" min="5" max="100" />
+        </div>
+        <div class="row" style="margin-top: auto;">
+          <button id="go" class="primary">開始語音轉錄</button>
+          <button id="cancel" class="secondary" disabled>取消</button>
+        </div>
+      </div>
+
+      <div id="status-card" class="input-group" style="display:none; background:rgba(255,255,255,0.02); padding:12px; border-radius:8px; border:1px solid var(--border);">
+        <span id="status" style="font-size:14px; font-weight:500;">狀態: 準備中</span>
+        <small id="paths" style="color:var(--muted); font-size:11px;"></small>
+      </div>
+
+      <div id="results" class="results-actions" style="display:none">
+        <span>📂 下載轉錄成果：</span>
+        <div class="dl-links">
+          <a id="link-txt" href="#" target="_blank" style="display:none">TXT 檔</a>
+          <a id="link-srt" href="#" target="_blank" style="display:none">SRT 檔</a>
+          <a id="link-vtt" href="#" target="_blank" style="display:none">VTT 檔</a>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label for="text">原始轉錄逐字稿</label>
+          <button id="copy-text-btn" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="copyText('text')">📋 複製</button>
+        </div>
+        <textarea id="text" placeholder="轉錄結果會出現在這裡..." readonly></textarea>
+      </div>
+
+      <div class="input-group">
+        <label>ASR 轉譯 Log 輸出 (即時尾段)</label>
+        <pre id="log" class="log-box">等待轉錄開始...</pre>
+      </div>
+    </div>
+
+    <!-- Right Column: AI Secretary Panel -->
+    <div class="card" id="ai-panel">
+      <h2>🧠 AI 秘書自動整理 (Gemma-4 本地大模型)</h2>
+      
+      <div class="input-group">
+        <label>快速整理指令</label>
+        <div class="llm-grid">
+          <button class="llm-btn" id="btn-proofread" onclick="processLLM('proofread')">✍️ 校正字句 & 標點</button>
+          <button class="llm-btn" id="btn-diarization" onclick="processLLM('diarization')">👥 智慧發言人姓名重寫</button>
+          <button class="llm-btn" id="btn-minutes" onclick="processLLM('minutes')">📝 產出精美會議記錄</button>
+          <button class="llm-btn" id="btn-summary" onclick="processLLM('summary')">💡 提煉精簡重點摘要</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label for="custom-prompt">自訂 AI 祕書指令 (可自寫提示詞)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="custom-prompt" placeholder="例如：請將上面的文字翻譯成精美的英文商業郵件格式..." style="flex:1;" />
+          <button class="secondary" id="btn-custom" onclick="processLLM('custom')">🚀 送出</button>
+        </div>
+      </div>
+
+      <div class="input-group" style="flex: 1;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label>AI 秘書處理成果</label>
+          <div style="display:flex; gap:6px;">
+            <button id="view-mode-btn" class="secondary" style="padding:4px 8px; font-size:11px;" onclick="toggleViewMode()">📄 切換為純文字編輯器</button>
+            <button class="secondary" style="padding:4px 8px; font-size:11px;" onclick="copyRichText()">📋 複製</button>
+          </div>
+        </div>
+        
+        <!-- AI Thought Process Container -->
+        <div id="llm-thought-container" style="display:none; margin-bottom: 12px;">
+          <details open style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border); border-radius: 8px; padding: 10px;">
+            <summary style="font-size: 13px; color: var(--muted); cursor: pointer; user-select: none; font-weight: 500;">
+              💡 AI 秘書的思考過程 (點擊收合)
+            </summary>
+            <div id="llm-thought-content" style="font-size: 12px; color: var(--muted); line-height: 1.5; margin-top: 8px; white-space: pre-wrap;"></div>
+          </details>
+        </div>
+        
+        <!-- Rich output -->
+        <div id="llm-output-rich" class="output-rich"><em>等待處理... 成果將會以精美的格式排版呈現於此。</em></div>
+        <!-- Raw textarea for editing / copying -->
+        <textarea id="llm-output-raw" style="display:none;" placeholder="AI 秘書生成的生文字..."></textarea>
+      </div>
+
+      <div class="status-badge" style="justify-content:flex-end;">
+        <span style="font-size:11px; color:var(--muted);">由本地端 100% 離線 Gemma-4 提供運算，資料不外洩，完全免費</span>
+      </div>
+    </div>
+    
+  </main>
+
+  <footer>
+    <p>Breeze ASR & Gemma-4 智慧會議秘書平台 © 2026 | 全本地化無訂閱費解決方案</p>
+  </footer>
+
+  <script>
+    const statusEl=document.getElementById('status');
+    const textEl=document.getElementById('text');
+    const logEl=document.getElementById('log');
+    const pathsEl=document.getElementById('paths');
+    const resultsDiv=document.getElementById('results');
+    const btnGo=document.getElementById('go');
+    const btnCancel=document.getElementById('cancel');
+    const fnameEl=document.getElementById('fname');
+    const fileEl=document.getElementById('file');
+    const statusCard=document.getElementById('status-card');
+    
+    const llmOutputRich = document.getElementById('llm-output-rich');
+    const llmOutputRaw = document.getElementById('llm-output-raw');
+    const viewModeBtn = document.getElementById('view-mode-btn');
+
+    // WhisperX Elements
+    const useWhisperxEl = document.getElementById('use-whisperx');
+    const whisperxSettingsEl = document.getElementById('whisperx-settings');
+    const hfTokenEl = document.getElementById('hf-token');
+    const minSpeakersEl = document.getElementById('min-speakers');
+    const maxSpeakersEl = document.getElementById('max-speakers');
+
+    let jobId=null, timer=null;
+    let isRichMode = true;
+
+    // WhisperX UI Toggle
+    useWhisperxEl.addEventListener('change', (e) => {
+      whisperxSettingsEl.style.display = e.target.checked ? 'flex' : 'none';
+    });
+
+    // HF Token storage
+    if (localStorage.getItem('hf_token')) {
+      hfTokenEl.value = localStorage.getItem('hf_token');
+    }
+    hfTokenEl.addEventListener('input', (e) => {
+      localStorage.setItem('hf_token', e.target.value.trim());
+    });
+
+    // File selection UI update
+    fileEl.addEventListener('change', (e) => {
+      const f = e.target.files?.[0];
+      if (f) {
+        fnameEl.textContent = `🎵 已選擇：${f.name} (${(f.size/1024/1024).toFixed(2)} MB)`;
+        fnameEl.style.color = '#19c37d';
+      } else {
+        fnameEl.textContent = "📁 點擊此處或拖曳檔案進行上傳";
+        fnameEl.style.color = '';
+      }
+    });
+
+    function setBusy(b){ 
+      btnGo.disabled=b; 
+      btnCancel.disabled=!b; 
+    }
+
+btnGo.onclick=async()=>{
+  const f=document.getElementById('file').files[0];
+  const fmt=document.getElementById('format').value;
+  const maxLen=document.getElementById('max_len').value;
+  if(!f){alert('請先選音檔');return}
+  
+  statusCard.style.display = 'block';
+  statusEl.textContent='準備上傳...'; 
+  statusEl.style.color = '';
+  textEl.value=''; logEl.textContent=''; pathsEl.textContent='';
+  resultsDiv.style.display='none';
+  setBusy(true);
+
+  const chunkSize = 512 * 1024; // 512KB
+  const totalChunks = Math.ceil(f.size / chunkSize);
+  const uploadId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+  
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, f.size);
+    const chunk = f.slice(start, end);
+    
+    const fd = new FormData();
+    fd.append('upload_id', uploadId);
+    fd.append('chunk_index', i);
+    fd.append('file', chunk, 'chunk.bin'); 
+    
+    let success = false;
+    let retryCount = 0;
+    while (!success && retryCount < 10) {
+      try {
+        const response = await fetch('/api/upload_chunk', {
+          method: 'POST',
+          body: fd
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        success = true;
+      } catch (err) {
+        retryCount++;
+        if (retryCount >= 10) {
+          statusEl.textContent=`上傳失敗 (段 ${i+1}/${totalChunks}): ${err.message} (已重試10次)`;
+          statusEl.style.color = '#ef4444';
+          setBusy(false);
+          return;
+        }
+        statusEl.textContent=`段 ${i+1}/${totalChunks} 失敗，正在自動重試 (${retryCount}/10)...`;
+        await new Promise(r => setTimeout(r, 1000 * retryCount)); // Exponential backoff
+      }
+    }
+    const percent = Math.round(((i + 1) / totalChunks) * 100);
+    statusEl.textContent = `檔案上傳中... ${percent}%`;
+    // small sleep between chunks to avoid congestion
+    await new Promise(r => setTimeout(r, 100));
+  }
+
+  statusEl.textContent = `伺服器組裝檔案中...`;
+  
+  const fd2 = new FormData();
+  fd2.append('upload_id', uploadId);
+  fd2.append('filename', f.name);
+  fd2.append('format', fmt);
+  fd2.append('max_len', maxLen);
+  fd2.append('use_whisperx', useWhisperxEl.checked ? 'true' : 'false');
+  if (useWhisperxEl.checked) {
+    fd2.append('hf_token', hfTokenEl.value.trim());
+    fd2.append('min_speakers', minSpeakersEl.value.trim());
+    fd2.append('max_speakers', maxSpeakersEl.value.trim());
+  }
+
+  try {
+    const r=await fetch('/api/transcribe',{method:'POST',body:fd2});
+    const j=await r.json();
+    if(!j.ok){ 
+      statusEl.textContent='失敗: '+(j.error||'unknown'); 
+      statusEl.style.color = '#ef4444';
+      setBusy(false); 
+      return; 
+    }
+    jobId=j.job_id;
+    localStorage.setItem('current_job_id', jobId);
+    statusEl.textContent=`音檔上傳完成！開始分析與切片... (job_id=${jobId})`;
+    await poll();
+    timer=setInterval(poll, 2000);
+  } catch (err) {
+    statusEl.textContent='解析伺服器回應失敗';
+    statusEl.style.color = '#ef4444';
+    setBusy(false);
+  }
+};
+
+    async function poll(){
+      if(!jobId) return;
+      const r=await fetch(`/api/jobs/${jobId}`);
+      if (r.status === 404) {
+        statusEl.textContent = '狀態: 任務不存在或伺服器已重啟 ❌';
+        statusEl.style.color = '#ef4444';
+        localStorage.removeItem('current_job_id');
+        clearInterval(timer); timer = null; setBusy(false);
+        return;
+      }
+      const j=await r.json();
+      if(!j.ok){ statusEl.textContent='狀態: 查詢失敗'; return; }
+      statusEl.textContent = `狀態: ${j.status.toUpperCase()} (已耗時 ${j.elapsed_sec} 秒) - 處理PID: ${j.pid||'-'}`;
+      pathsEl.textContent = `轉錄檔案: ${j.input_path||''}`;
+      logEl.textContent = j.log_tail || '';
+      logEl.scrollTop = logEl.scrollHeight;
+      
+      if(j.status==='done'){
+        textEl.value = j.text || '';
+        statusEl.textContent = "狀態: 轉錄成功！✨";
+        statusEl.style.color = '#19c37d';
+        resultsDiv.style.display = 'flex';
+        
+        const formats = ['txt', 'srt', 'vtt'];
+        formats.forEach(ext => {
+          const link = document.getElementById(`link-${ext}`);
+          link.href = `/api/jobs/${jobId}/download?ext=${ext}`;
+          link.style.display = 'inline';
+          link.textContent = `${ext.toUpperCase()} 下載`;
+        });
+        localStorage.removeItem('current_job_id');
+        clearInterval(timer); timer=null; setBusy(false);
+      } else if(['failed','cancelled'].includes(j.status)){
+        statusEl.textContent = `狀態: ${j.status==='cancelled'?'已取消':'轉錄失敗 ❌'}`;
+        statusEl.style.color = '#ef4444';
+        localStorage.removeItem('current_job_id');
+        clearInterval(timer); timer=null; setBusy(false);
+      }
+    }
+
+    btnCancel.onclick=async()=>{
+      if(!jobId) return;
+      await fetch(`/api/jobs/${jobId}/cancel`, {method:'POST'});
+      await poll();
+    };
+
+    // LLM Markdown parsing
+    function markdownToHtml(s) {
+      s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      s = s.replace(/^###\s+(.+)$/gm, '<h3>$1</h3>');
+      s = s.replace(/^##\s+(.+)$/gm, '<h2>$1</h2>');
+      s = s.replace(/^#\s+(.+)$/gm, '<h1>$1</h1>');
+      s = s.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/^-\s+(.+)$/gm, '<li>$1</li>');
+      s = s.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
+      s = s.replace(/<\/ul>\s*<ul>/g, '');
+      s = s.replace(/\n/g, '<br>');
+      return s;
+    }
+
+    // Toggle view mode between rich HTML and raw editable textarea
+    function toggleViewMode() {
+      isRichMode = !isRichMode;
+      if (isRichMode) {
+        llmOutputRich.style.display = 'block';
+        llmOutputRaw.style.display = 'none';
+        viewModeBtn.textContent = '📄 切換為純文字編輯器';
+      } else {
+        llmOutputRich.style.display = 'none';
+        llmOutputRaw.style.display = 'block';
+        viewModeBtn.textContent = '👁️ 切換為排版預覽';
+      }
+    }
+
+    // Copy to clipboard helpers
+    function copyText(id) {
+      const el = document.getElementById(id);
+      el.select();
+      document.execCommand('copy');
+      alert('已複製到剪貼簿！');
+    }
+    
+    function copyRichText() {
+      llmOutputRaw.select();
+      document.execCommand('copy');
+      alert('已複製 AI 成果到剪貼簿！');
+    }
+
+    // LLM API stream communication
+    async function processLLM(action) {
+      const text = textEl.value.trim();
+      const customPrompt = document.getElementById('custom-prompt').value.trim();
+      
+      if (!text) {
+        alert('請先在左側完成語音轉錄，或於「原始轉錄逐字稿」貼入文字再執行！');
+        return;
+      }
+      
+      // Disable buttons
+      const llmBtns = document.querySelectorAll('.llm-btn, #btn-custom');
+      llmBtns.forEach(btn => btn.disabled = true);
+      
+      llmOutputRich.innerHTML = '<div style="color:var(--accent-blue);">🤖 AI 秘書思考中，正在分析上下文語意...</div>';
+      llmOutputRaw.value = '';
+      
+      // Reset thoughts container
+      document.getElementById('llm-thought-container').style.display = 'none';
+      document.getElementById('llm-thought-content').textContent = '';
+      
+      let accThought = '';
+      let accText = '';
+      
+      try {
+        const response = await fetch('/api/llm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, action, custom_prompt: customPrompt })
+        });
+        
+        if (!response.body) {
+          throw new Error('瀏覽器不支援 Streaming 讀取。');
+        }
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        let done = false;
+        
+        // Remove initial "thinking" placeholder as soon as we receive data
+        let hasData = false;
+        
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+          
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
+          
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line.startsWith('data:')) continue;
+            
+            const dataStr = line.slice(5).trim();
+            try {
+              const obj = JSON.parse(dataStr);
+              if (!hasData) {
+                llmOutputRich.innerHTML = '';
+                hasData = true;
+              }
+              
+              if (obj.error) {
+                accText += `\n[錯誤]: ${obj.error}`;
+                llmOutputRaw.value = accText;
+                llmOutputRich.innerHTML = markdownToHtml(accText);
+              } else if (obj.thought) {
+                accThought += obj.thought;
+                document.getElementById('llm-thought-container').style.display = 'block';
+                document.getElementById('llm-thought-content').textContent = accThought;
+              } else if (obj.delta) {
+                accText += obj.delta;
+                llmOutputRaw.value = accText;
+                llmOutputRich.innerHTML = markdownToHtml(accText);
+                
+                // Auto scroll to bottom
+                llmOutputRich.scrollTop = llmOutputRich.scrollHeight;
+              }
+            } catch (e) {
+              continue;
+            }
+          }
+        }
+      } catch (err) {
+        llmOutputRich.innerHTML = `<div style="color:#ef4444;">連線失敗: ${err.message}</div>`;
+      } finally {
+        llmBtns.forEach(btn => btn.disabled = false);
+        document.getElementById('custom-prompt').value = '';
+      }
+    }
+
+    // Check LLM service health on load
+    async function checkLLMHealth() {
+      const llmDot = document.getElementById('llm-dot');
+      const llmStatus = document.getElementById('llm-status');
+      try {
+        const r = await fetch('/api/llm/health');
+        const j = await r.json();
+        if (j.ok && j.status === 'online') {
+          llmDot.className = 'dot';
+          llmStatus.textContent = 'Gemma-4: 18082 (Online)';
+        } else {
+          llmDot.className = 'dot yellow';
+          llmStatus.textContent = 'Gemma-4: 18082 (Offline)';
+        }
+      } catch(e) {
+        llmDot.className = 'dot yellow';
+        llmStatus.textContent = 'Gemma-4: 18082 (Error)';
+      }
+    }
+
+    async function fetchSystemCapabilities() {
+      try {
+        const r = await fetch('/api/system/capabilities');
+        const caps = await r.json();
+        applyCapabilities(caps);
+      } catch (e) {
+        console.error("Failed to fetch capabilities:", e);
+      }
+    }
+
+    function applyCapabilities(caps) {
+      if (!caps || !caps.capabilities) return;
+      
+      if (caps.capabilities.whisperx_diarization === false) {
+        const useWhisperxEl = document.getElementById('use-whisperx');
+        if (useWhisperxEl) {
+          useWhisperxEl.disabled = true;
+          useWhisperxEl.checked = false;
+          useWhisperxEl.title = "硬體不支援或尚未安裝 WhisperX (建議 VRAM >= 7GB)";
+          
+          const label = document.querySelector('label[for="use-whisperx"]');
+          if (label) {
+            label.style.color = "var(--muted)";
+            label.title = "硬體不支援或尚未安裝 WhisperX (建議 VRAM >= 7GB)";
+          }
+          
+          const whisperxSettingsEl = document.getElementById('whisperx-settings');
+          if (whisperxSettingsEl) whisperxSettingsEl.style.display = 'none';
+        }
+      }
+      
+      if (caps.capabilities.gemma_e2b_multimodal === false) {
+        const btnRewrite = document.getElementById('btn-diarization');
+        if (btnRewrite) {
+          btnRewrite.disabled = true;
+          btnRewrite.style.opacity = '0.5';
+          btnRewrite.style.cursor = 'not-allowed';
+          btnRewrite.title = "硬體不支援或尚未安裝 Gemma-4-E2B 多模態模型";
+        }
+      }
+    }
+
+    window.addEventListener('load', () => {
+      fetchSystemCapabilities();
+      checkLLMHealth();
+    });
+
+    // Periodically check LLM status
+    setInterval(checkLLMHealth, 10000);
+
+    // 頁面載入時自動恢復先前未完成的轉寫任務
+    const savedJobId = localStorage.getItem('current_job_id');
+    if (savedJobId) {
+      jobId = savedJobId;
+      setBusy(true);
+      statusCard.style.display = 'block';
+      statusEl.textContent = `狀態: 偵測到未完成背景任務，正在自動恢復進度... (ID: ${jobId})`;
+      poll();
+      timer = setInterval(poll, 2000);
+    }
+  </script>
+</body>
+</html>

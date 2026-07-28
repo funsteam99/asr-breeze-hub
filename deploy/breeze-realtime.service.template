@@ -1,0 +1,18 @@
+[Unit]
+Description=breeze-asr-hub realtime VAD + ASR console
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=@USER@
+Group=@GROUP@
+WorkingDirectory=@REPO_ROOT@
+ExecStart=@PYTHON@ @REPO_ROOT@/services/realtime/server.py
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=3
+# The microphone may not be enumerated the instant the network comes up.
+StartLimitIntervalSec=0
+
+[Install]
+WantedBy=multi-user.target

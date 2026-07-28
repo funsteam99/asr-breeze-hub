@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XAVIER // 實時語音轉寫聽寫台 (Web Audio API)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@600;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(18, 26, 43, 0.85);
+      --border: rgba(0, 240, 255, 0.2);
+      --accent: #00f0ff;
+      --green: #00ff9d;
+      --amber: #ffb700;
+      --red: #ff3366;
+      --text: #f1f5f9;
+      --text-sub: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      width: 100%;
+      max-width: 950px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    header {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .title-group h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+    }
+    .title-group .accent { color: var(--accent); }
+    .subtitle { font-size: 0.75rem; color: var(--text-sub); margin-top: 4px; }
+    
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: rgba(0, 255, 157, 0.1);
+      border: 1px solid rgba(0, 255, 157, 0.3);
+      color: var(--green);
+    }
+    .status-badge.recording {
+      background: rgba(255, 183, 0, 0.15);
+      border-color: rgba(255, 183, 0, 0.4);
+      color: var(--amber);
+      animation: pulse 1s infinite;
+    }
+    .status-badge.transcribing {
+      background: rgba(0, 240, 255, 0.15);
+      border-color: rgba(0, 240, 255, 0.4);
+      color: var(--accent);
+    }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+
+    .controls-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .control-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+
+    .btn-toggle {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    .btn-toggle:hover {
+      background: rgba(0, 240, 255, 0.2);
+      border-color: var(--accent);
+    }
+    .btn-toggle.active {
+      background: rgba(0, 255, 157, 0.15);
+      border-color: rgba(0, 255, 157, 0.4);
+      color: var(--green);
+    }
+
+    .meter-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .meter-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+    .meter-bg {
+      height: 14px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    .meter-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--green), var(--amber));
+      border-radius: 7px;
+      transition: width 0.08s linear;
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    @media (min-width: 768px) {
+      .main-grid.video-active {
+        grid-template-columns: 360px 1fr;
+      }
+    }
+
+    .camera-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .camera-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .camera-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      color: var(--accent);
+    }
+    .video-box {
+      width: 100%;
+      height: 210px;
+      background: #000;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed rgba(255,255,255,0.15);
+      position: relative;
+    }
+    .video-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .feed-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 450px;
+    }
+    .feed-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 12px;
+    }
+    .feed-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.9rem;
+      color: var(--accent);
+    }
+    .feed-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover { background: rgba(0, 240, 255, 0.2); border-color: var(--accent); }
+
+    .feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 500px;
+      overflow-y: auto;
+      padding-right: 6px;
+    }
+    .msg-bubble {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .msg-meta {
+      display: flex;
+      gap: 12px;
+      font-size: 0.7rem;
+      color: var(--text-sub);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .msg-text {
+      font-size: 1.05rem;
+      line-height: 1.5;
+      color: #ffffff;
+      font-weight: 500;
+    }
+    .empty-tip {
+      text-align: center;
+      color: var(--text-sub);
+      margin: auto 0;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>XAVIER <span class="accent">// REALTIME ASR (WEB AUDIO)</span></h1>
+        <div class="subtitle">Logitech C525 Microphone + VAD + Breeze-ASR CUDA + Web Audio Engine</div>
+      </div>
+      <div class="status-badge" id="statusBadge">
+        <span id="statusDot">&#9679;</span>
+        <span id="statusText">CONNECTING...</span>
+      </div>
+    </header>
+
+    <div class="controls-bar">
+      <div class="control-card">
+        <div class="control-label">
+          <span>AUDIO MONITOR (WEB AUDIO API)</span>
+          <span style="font-size:0.7rem; color:var(--text-sub);" id="audioStatusLabel">DEFAULT: OFF</span>
+        </div>
+        <button class="btn-toggle" id="btnAudioToggle" onclick="toggleAudioMonitor()">
+          ENABLE AUDIO MONITOR
+        </button>
+      </div>
+
+      <div class="control-card">
+        <div class="control-label">
+          <span>WEBCAM PREVIEW</span>
+          <span style="font-size:0.7rem; color:var(--text-sub);" id="camStatusLabel">DEFAULT: OFF</span>
+        </div>
+        <button class="btn-toggle" id="btnCamToggle" onclick="toggleCamera()">
+          ENABLE WEBCAM PREVIEW (LED ON)
+        </button>
+      </div>
+    </div>
+
+    <div class="meter-card">
+      <div class="meter-label">
+        <span>LOGITECH C525 RMS VU METER (10 FPS REAL-TIME)</span>
+        <span id="volumeVal">0 RMS</span>
+      </div>
+      <div class="meter-bg">
+        <div class="meter-fill" id="meterFill"></div>
+      </div>
+    </div>
+
+    <div class="main-grid" id="mainGrid">
+
+      <div class="camera-card" id="cameraCardBox" style="display:none;">
+        <div class="camera-header">
+          <span class="camera-title">WEBCAM LIVE STREAM</span>
+        </div>
+        <div class="video-box">
+          <img id="videoImg" alt="Webcam Live Stream" />
+        </div>
+      </div>
+
+      <div class="card feed-card">
+        <div class="feed-header">
+          <span class="feed-title">REAL-TIME TRANSCRIPTIONS</span>
+          <div class="feed-actions">
+            <button class="btn" onclick="copyAllText()">COPY ALL</button>
+            <button class="btn" onclick="clearFeed()">CLEAR</button>
+          </div>
+        </div>
+
+        <div class="feed-list" id="feedList">
+          <div class="empty-tip" id="emptyTip">Speak into the Logitech C525 microphone...<br>VAD segmenting and CUDA Breeze-ASR transcribing.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    var statusBadge = document.getElementById('statusBadge');
+    var statusText = document.getElementById('statusText');
+    var volumeVal = document.getElementById('volumeVal');
+    var meterFill = document.getElementById('meterFill');
+    var feedList = document.getElementById('feedList');
+    var emptyTip = document.getElementById('emptyTip');
+
+    var videoImg = document.getElementById('videoImg');
+    var btnCamToggle = document.getElementById('btnCamToggle');
+    var camStatusLabel = document.getElementById('camStatusLabel');
+    var cameraCardBox = document.getElementById('cameraCardBox');
+    var mainGrid = document.getElementById('mainGrid');
+
+    var btnAudioToggle = document.getElementById('btnAudioToggle');
+    var audioStatusLabel = document.getElementById('audioStatusLabel');
+
+    var ws = null;
+    var isCamOn = false;
+    var isAudioOn = false;
+    var camInterval = null;
+
+    // Web Audio API State
+    var audioCtx = null;
+    var nextAudioTime = 0;
+
+    // Filled in by /api/config before the first connect, so the console works
+    // unchanged when the ports are remapped in .env or behind a proxy.
+    var serverConfig = { ws_port: 8016, camera: true };
+
+    function connectWS() {
+      var wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      var wsUrl = wsProtocol + '//' + location.hostname + ':' + serverConfig.ws_port;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = function() {
+        console.log('Native WebSocket Connected to:', wsUrl);
+        updateStatus('LISTENING');
+      };
+
+      ws.onmessage = function(evt) {
+        try {
+          var msg = JSON.parse(evt.data);
+          if (msg.type === 'frame') {
+            updateMeter(msg.volume);
+            updateStatus(msg.status);
+            if (isAudioOn && msg.pcm) {
+              playPcmChunk(msg.pcm);
+            }
+          } else if (msg.type === 'status') {
+            updateStatus(msg.status);
+          } else if (msg.type === 'transcription') {
+            addTranscription(msg);
+          }
+        } catch (e) {
+          console.error('WS Parse Error:', e);
+        }
+      };
+
+      ws.onclose = function() {
+        console.warn('WebSocket Disconnected, reconnecting in 2s...');
+        updateStatus('OFFLINE');
+        setTimeout(connectWS, 2000);
+      };
+
+      ws.onerror = function(err) {
+        console.error('WS Error:', err);
+      };
+    }
+
+    function toggleAudioMonitor() {
+      isAudioOn = !isAudioOn;
+
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      }
+
+      if (isAudioOn) {
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        nextAudioTime = audioCtx.currentTime;
+
+        btnAudioToggle.textContent = 'DISABLE AUDIO MONITOR';
+        btnAudioToggle.classList.add('active');
+        audioStatusLabel.textContent = 'STATUS: STREAMING (WEB AUDIO)';
+        audioStatusLabel.style.color = 'var(--green)';
+      } else {
+        if (audioCtx) {
+          audioCtx.suspend();
+        }
+        btnAudioToggle.textContent = 'ENABLE AUDIO MONITOR';
+        btnAudioToggle.classList.remove('active');
+        audioStatusLabel.textContent = 'DEFAULT: OFF';
+        audioStatusLabel.style.color = 'var(--text-sub)';
+      }
+    }
+
+    function playPcmChunk(base64Data) {
+      if (!audioCtx || audioCtx.state !== 'running') return;
+
+      var binaryStr = atob(base64Data);
+      var len = binaryStr.length;
+      var bytes = new Uint8Array(len);
+      for (var i = 0; i < len; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+
+      var int16Samples = new Int16Array(bytes.buffer);
+      var sampleCount = int16Samples.length;
+      var float32Samples = new Float32Array(sampleCount);
+
+      for (var j = 0; j < sampleCount; j++) {
+        float32Samples[j] = int16Samples[j] / 32768.0;
+      }
+
+      var buffer = audioCtx.createBuffer(1, sampleCount, 16000);
+      buffer.getChannelData(0).set(float32Samples);
+
+      var source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+
+      if (nextAudioTime < audioCtx.currentTime) {
+        nextAudioTime = audioCtx.currentTime;
+      }
+
+      source.start(nextAudioTime);
+      nextAudioTime += buffer.duration;
+    }
+
+    function toggleCamera() {
+      isCamOn = !isCamOn;
+      if (isCamOn) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'camera', action: 'start' }));
+        }
+        cameraCardBox.style.display = 'flex';
+        videoImg.style.display = 'block';
+
+        camInterval = setInterval(function() {
+          if (isCamOn) {
+            videoImg.src = '/video_frame?t=' + Date.now();
+          }
+        }, 100);
+
+        btnCamToggle.textContent = 'DISABLE WEBCAM (LED OFF)';
+        btnCamToggle.classList.add('active');
+        camStatusLabel.textContent = 'STATUS: STREAMING';
+        camStatusLabel.style.color = 'var(--green)';
+        mainGrid.classList.add('video-active');
+      } else {
+        clearInterval(camInterval);
+        camInterval = null;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'camera', action: 'stop' }));
+        }
+
+        videoImg.src = '';
+        videoImg.style.display = 'none';
+        cameraCardBox.style.display = 'none';
+
+        btnCamToggle.textContent = 'ENABLE WEBCAM PREVIEW (LED ON)';
+        btnCamToggle.classList.remove('active');
+        camStatusLabel.textContent = 'DEFAULT: OFF';
+        camStatusLabel.style.color = 'var(--text-sub)';
+        mainGrid.classList.remove('video-active');
+      }
+    }
+
+    function updateStatus(status) {
+      statusText.textContent = status;
+      statusBadge.className = 'status-badge ' + status.toLowerCase();
+    }
+
+    function updateMeter(rms) {
+      volumeVal.textContent = rms + ' RMS';
+      var pct = Math.min(100, Math.round((rms / 2500) * 100));
+      meterFill.style.width = pct + '%';
+    }
+
+    function addTranscription(item) {
+      if (emptyTip) emptyTip.style.display = 'none';
+
+      var bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.innerHTML = '<div class="msg-meta"><span>TIME: ' + item.time + '</span><span>AUDIO DURATION: ' + item.duration + 's</span><span>CUDA TIME: ' + item.cuda_time + 's</span></div><div class="msg-text">' + escapeHtml(item.text) + '</div>';
+      feedList.insertBefore(bubble, feedList.firstChild);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function clearFeed() {
+      feedList.innerHTML = '';
+      if (emptyTip) feedList.appendChild(emptyTip);
+      emptyTip.style.display = 'block';
+    }
+
+    function copyAllText() {
+      var texts = Array.from(document.querySelectorAll('.msg-text')).map(function(el) { return el.textContent; }).reverse();
+      if (texts.length === 0) return alert('No text to copy');
+      var nl = String.fromCharCode(10);
+      navigator.clipboard.writeText(texts.join(nl)).then(function() { alert('Copied all text to clipboard'); });
+    }
+
+    // Ask the server what this box actually supports, then connect. If the
+    // request fails we still connect using the defaults rather than dying.
+    fetch('/api/config')
+      .then(function(r) { return r.json(); })
+      .then(function(cfg) {
+        serverConfig = cfg;
+        if (!cfg.camera) {
+          document.getElementById('btnCamToggle').style.display = 'none';
+        }
+      })
+      .catch(function() { /* keep defaults */ })
+      .then(function() { connectWS(); });
+  </script>
+</body>
+</html>
