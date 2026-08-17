@@ -125,6 +125,15 @@ VAD_MIN_SPEECH_SEC = _float("VAD_MIN_SPEECH_SEC", 0.8)
 VAD_MAX_SPEECH_SEC = _float("VAD_MAX_SPEECH_SEC", 10.0)
 VAD_MAX_HISTORY = _int("VAD_MAX_HISTORY", 200)
 
+# --- DSP Speech Enhancement -------------------------------------------------
+
+DSP_ENHANCE_ENABLED = _bool("DSP_ENHANCE_ENABLED", True)
+DSP_HIGHPASS_HZ = _float("DSP_HIGHPASS_HZ", 80.0)
+DSP_LOWPASS_HZ = _float("DSP_LOWPASS_HZ", 7500.0)
+DSP_PEAK_NORM_DBFS = _float("DSP_PEAK_NORM_DBFS", -1.0)
+DSP_AGC_TARGET_RMS = _float("DSP_AGC_TARGET_RMS", 0.12)
+
+
 # --- Camera -----------------------------------------------------------------
 
 CAMERA_ENABLED = _bool("CAMERA_ENABLED", True)

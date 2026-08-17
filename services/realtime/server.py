@@ -205,12 +205,14 @@ def vad_loop():
             if duration >= config.VAD_MIN_SPEECH_SEC:
                 counter += 1
                 wav_path = config.WORK_DIR / "segment_{}_{}.wav".format(counter, int(time.time()))
-                audio.write_wav(wav_path, speech)
+                speech_to_write = audio.enhance_pcm_bytes(speech, config.SAMPLE_RATE) if getattr(config, "DSP_ENHANCE_ENABLED", True) else speech
+                audio.write_wav(wav_path, speech_to_write)
                 asr_queue.put((wav_path, duration))
             else:
                 state["status"] = "LISTENING"
             speech = bytearray()
             silent_frames = 0
+
 
 
 # --------------------------------------------------------------------------
